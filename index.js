@@ -28,6 +28,8 @@ function filterNonContests (tweet) {
         !text.match(/^"/) &&
         !text.match(/^i've entered/) &&
         !text.match(/^i just entered/) &&
+        !text.match(/^i want/) &&
+        !text.match(/^help met/) &&
         !text.match("vote") &&
         !tweet.retweeted;
 
