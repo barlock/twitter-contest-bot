@@ -2,8 +2,11 @@ var kefir = require("kefir"),
     twitter = require("./lib/twitter"),
 
     MAX_ARRAY = 3000000,
+    MAX_CONTESTS = 50,
     RATE_LIMIT_EXCEEDED_TIMEOUT = 1000 * 60 * 15, 	// 15 minutes
     RATE_LIMIT = 180,
+
+    contestsEnteredCount = 0,
     previouslyFoundTweets = [],
     searchPool = kefir.pool(),
     contestPool = kefir.pool();
@@ -19,19 +22,21 @@ function addToFoundTweets (tweet) {
 function filterNonContests (tweet) {
     var text = tweet.text.toLowerCase(),
         letItThrough =
-        !text.match(/rt @?\w+:/) &&
-        !text.match(/rt @?\w+/) &&
-        !text.match(/^rt:/) &&
-        !text.match(/^rt\s"/) &&
-        !text.match(/^@\s?\w+/) &&
-        !text.match(/^\w+:/) &&
-        !text.match(/^"/) &&
-        !text.match(/^i've entered/) &&
-        !text.match(/^i just entered/) &&
-        !text.match(/^i want/) &&
-        !text.match(/^help met/) &&
-        !text.match("vote") &&
-        !tweet.retweeted;
+            !text.match(/rt @?\w+:/) &&
+            !text.match(/rt @?\w+/) &&
+            !text.match(/^rt:/) &&
+            !text.match(/^rt\s"/) &&
+            !text.match(/^@\s?\w+/) &&
+            !text.match(/^\w+:/) &&
+            !text.match(/^"/) &&
+            !text.match(/^i've entered/) &&
+            !text.match(/^i just entered/) &&
+            !text.match(/^i want/) &&
+            !text.match(/^help met/) &&
+            !text.match("vote") &&
+            !tweet.in_reply_to_status_id &&
+            !tweet.in_reply_to_user_id &&
+            !tweet.retweeted;
 
     if(!letItThrough) {
         addToFoundTweets(tweet);
@@ -77,6 +82,13 @@ function enterContest (tweet) {
                 console.log(`Following ${retweet.user.id_str}`);
                 twitter.follow(retweet.user.id_str);
             }
+            contestsEnteredCount += 1;
+
+            console.log(`Entered ${contestsEnteredCount} contests`);
+
+            if (contestsEnteredCount >= MAX_CONTESTS) {
+                process.exit(0);
+            }
         })
 }
 
@@ -97,10 +109,15 @@ contestPool.plug(twitter
 
 // Fetch these tweets
 searchPool
-    .throttle(RATE_LIMIT_EXCEEDED_TIMEOUT / RATE_LIMIT)
-    .flatMap(tweet => {
-        return twitter.getTweet(tweet.id_str);
+    .bufferWithTimeOrCount(RATE_LIMIT_EXCEEDED_TIMEOUT / RATE_LIMIT, 100)
+    .flatMap(tweets => {
+        var ids = tweets.map(tweets => {
+            return tweets.id_str;
+        }).join(",");
+
+        return twitter.lookup(ids);
     })
+    .flatten()
     .onValue(tweet => {
         contestPool.plug(kefir.constant(tweet));
     });
