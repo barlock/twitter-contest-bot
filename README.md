@@ -15,5 +15,26 @@ This bot is written purely for educational purposes. I hold no liability for wha
  * Export the variables found in `lib/config.js` with your Twitter API Credentials
  * run `node index.js`
 
+## Running on Cloud Foundry
+
+Create a manifest.yml
+
+```yml
+---
+applications:
+  - name: twitter-bot
+    env:
+      TWITTER_CONSUMER_KEY: <YOUR_TWITTER_CONSUMER_KEY>
+      TWITTER_CONSUMER_SECRET: <YOUR_TWITTER_CONSUMER_SECRET>
+      TWITTER_ACCESS_TOKEN_KEY: <YOUR_TWITTER_ACCESS_TOKEN_KEY>
+      TWITTER_ACCESS_TOKEN_SECRET: <YOUR_TWITTER_ACCESS_TOKEN_SECRET>
+```
+
+and
+
+```bash
+$ cf push
+```
+
 ## Licence
 The code is open-source and available under the MIT Licence. More details in the LICENCE.md file.

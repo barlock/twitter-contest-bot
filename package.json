@@ -6,7 +6,12 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "express": "^4.13.4",
     "kefir": "^3.2.0",
     "twitter": "^1.2.5"
+  },
+  "engines": {
+    "node": "^4.2.2",
+    "npm": "^3.3.12"
   }
 }

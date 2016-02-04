@@ -1,13 +1,16 @@
-var kefir = require("kefir"),
+var config = require("./lib/config"),
+    kefir = require("kefir"),
     twitter = require("./lib/twitter"),
 
     MAX_ARRAY = 3000000,
-    MAX_CONTESTS = 50,
-    RATE_LIMIT_EXCEEDED_TIMEOUT = 1000 * 60 * 15, 	// 15 minutes
-    RATE_LIMIT = 180,
 
-    contestsEnteredCount = 0,
+    API_PERIOD = 1000 * 60 * 15, 	// 15 minutes
+    API_LIMIT = 180,
+
+    ONE_DAY = 1000 * 60 * 60 * 24,
+
     previouslyFoundTweets = [],
+    friendList = [],
     searchPool = kefir.pool(),
     contestPool = kefir.pool();
 
@@ -21,28 +24,19 @@ function addToFoundTweets (tweet) {
 
 function filterNonContests (tweet) {
     var text = tweet.text.toLowerCase(),
-        letItThrough =
-            !text.match(/rt @?\w+:/) &&
-            !text.match(/rt @?\w+/) &&
-            !text.match(/^rt:/) &&
-            !text.match(/^rt\s"/) &&
-            !text.match(/^@\s?\w+/) &&
-            !text.match(/^\w+:/) &&
-            !text.match(/^"/) &&
-            !text.match(/^i've entered/) &&
-            !text.match(/^i just entered/) &&
-            !text.match(/^i want/) &&
-            !text.match(/^help met/) &&
-            !text.match("vote") &&
-            !tweet.in_reply_to_status_id &&
+        pass = !tweet.in_reply_to_status_id &&
             !tweet.in_reply_to_user_id &&
             !tweet.retweeted;
 
-    if(!letItThrough) {
+    pass = config.blockedPhrases.reduce((pass, phrase) => {
+        return pass && !text.match(phrase);
+    }, pass);
+
+    if (!pass) {
         addToFoundTweets(tweet);
     }
 
-    return letItThrough;
+    return pass;
 }
 
 function filterRetweets (tweet) {
@@ -80,14 +74,17 @@ function enterContest (tweet) {
 
             if (text.match(/follow|f\+rt|flw/)) {
                 console.log(`Following ${retweet.user.id_str}`);
-                twitter.follow(retweet.user.id_str);
-            }
-            contestsEnteredCount += 1;
+                twitter.follow(retweet.user.id_str)
+                    .onValue(user => {
+                        friendList.unshift(user.id_str);
 
-            console.log(`Entered ${contestsEnteredCount} contests`);
-
-            if (contestsEnteredCount >= MAX_CONTESTS) {
-                process.exit(0);
+                        if (friendList.length > config.maxFriends) {
+                            twitter.unFollow(friendList.pop())
+                                .onValue(user => {
+                                    console.log(`unFollowed ${user.id_str}`);
+                                })
+                        }
+                    });
             }
         })
 }
@@ -102,14 +99,21 @@ function searchStream (type) {
         .flatten();
 }
 
-contestPool.plug(twitter
-    .tweetStream("retweet win, rt win, retweet enter, rt enter"));
+twitter.getFriends()
+    .onValue(friends => {
+        friendList = friends;
+        console.log(`Fetched ${friends.length} friends`);
+
+        contestPool.plug(twitter
+            .tweetStream("retweet win, rt win, retweet enter, rt enter"));
+    });
+
 
 //contestPool.plug(kefir.interval(searchStream("popular")));
 
 // Fetch these tweets
 searchPool
-    .bufferWithTimeOrCount(RATE_LIMIT_EXCEEDED_TIMEOUT / RATE_LIMIT, 100)
+    .bufferBy(kefir.interval(API_PERIOD / API_LIMIT))
     .flatMap(tweets => {
         var ids = tweets.map(tweets => {
             return tweets.id_str;
@@ -127,4 +131,12 @@ contestPool
     .filter(filterPreviouslyFoundTweets)
     .filter(filterRetweets)
     .filter(filterNonContests)
-    .onValue(enterContest);
+    .bufferBy(kefir.interval(ONE_DAY / config.tweetsPerDay))
+    .onValue(tweets => {
+        var mostRetweets = tweets.reduce((mostRetweeted, tweet) => {
+            return tweet.retweet_count > mostRetweeted.retweet_count ?
+                tweet : mostRetweeted;
+        });
+
+        enterContest(mostRetweets);
+    });
