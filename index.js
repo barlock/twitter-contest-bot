@@ -59,7 +59,7 @@ function filterRetweets (tweet) {
         searchPool.plug(kefir.constant(tweet.quoted_status));
     }
 
-    return !tweet.retweet &&
+    return !tweet.retweeted &&
         !tweet.retweeted_status &&
         !tweet.quoted_status;
 }
