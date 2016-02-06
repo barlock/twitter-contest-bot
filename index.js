@@ -23,17 +23,25 @@ function addToFoundTweets (tweet) {
 }
 
 function filterNonContests (tweet) {
-    var text = tweet.text.toLowerCase(),
+    var pass = false;
+
+    if (tweet.text) {
+        var text = tweet.text.toLowerCase();
+
         pass = !tweet.in_reply_to_status_id &&
             !tweet.in_reply_to_user_id &&
             !tweet.retweeted;
 
-    pass = config.blockedPhrases.reduce((pass, phrase) => {
-        return pass && !text.match(phrase);
-    }, pass);
+        pass = config.blockedPhrases.reduce((pass, phrase) => {
+            return pass && !text.match(phrase);
+        }, pass);
 
-    if (!pass) {
-        addToFoundTweets(tweet);
+        if (!pass) {
+            addToFoundTweets(tweet);
+        }
+    } else {
+        console.log("Found non-tweet");
+        console.log(tweet);
     }
 
     return pass;
@@ -78,10 +86,13 @@ function enterContest (tweet) {
                     .onValue(user => {
                         friendList.unshift(user.id_str);
 
+                        console.log("New Friend total: ", friendList.length);
+
                         if (friendList.length > config.maxFriends) {
                             twitter.unFollow(friendList.pop())
                                 .onValue(user => {
                                     console.log(`unFollowed ${user.id_str}`);
+                                    console.log("New Friend total: ", friendList.length);
                                 })
                         }
                     });
