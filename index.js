@@ -80,7 +80,11 @@ function enterContest (tweet) {
                 twitter.favorite(retweet.id_str);
             }
 
-            if (text.match(/follow|f\+rt|flw/)) {
+            console.log(retweet.user);
+
+            if (friendList.indexOf(retweet.user.id_str) === -1 &&
+                text.match(/follow|f\+rt|flw/)) {
+
                 console.log(`Following ${retweet.user.id_str}`);
                 twitter.follow(retweet.user.id_str)
                     .onValue(user => {
