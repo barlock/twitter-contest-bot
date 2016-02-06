@@ -83,7 +83,7 @@ function enterContest (tweet) {
             }
 
             if (friendList.indexOf(retweet.user.id_str) === -1 &&
-                text.match(/follow|f\+rt|flw/)) {
+                text.match(/follow|f\+rt|flw|rt&f/)) {
 
                 console.log(`Following ${retweet.user.id_str}`);
                 twitter.follow(retweet.user.id_str)
