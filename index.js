@@ -26,11 +26,12 @@ function filterNonContests (tweet) {
     var pass = false;
 
     if (tweet.text) {
-        var text = tweet.text.toLowerCase();
+        var text = tweet.text.toLowerCase(),
+            tweetAge = Date.now() - Date.parse(tweet.created_at);
 
-        pass = !tweet.in_reply_to_status_id &&
-            !tweet.in_reply_to_user_id &&
-            !tweet.retweeted;
+        pass = tweetAge < config.maxContestAge &&
+            !tweet.in_reply_to_status_id &&
+            !tweet.in_reply_to_user_id;
 
         pass = config.blockedPhrases.reduce((pass, phrase) => {
             return pass && !text.match(phrase);
@@ -58,7 +59,8 @@ function filterRetweets (tweet) {
         searchPool.plug(kefir.constant(tweet.quoted_status));
     }
 
-    return !tweet.retweeted_status &&
+    return !tweet.retweet &&
+        !tweet.retweeted_status &&
         !tweet.quoted_status;
 }
 
