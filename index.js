@@ -80,8 +80,6 @@ function enterContest (tweet) {
                 twitter.favorite(retweet.id_str);
             }
 
-            console.log(retweet.user);
-
             if (friendList.indexOf(retweet.user.id_str) === -1 &&
                 text.match(/follow|f\+rt|flw/)) {
 
