@@ -38,6 +38,8 @@ function filterNonContests (tweet) {
             return pass && !text.match(phrase);
         }, pass);
 
+        pass = pass && !!text.match(/retweet|rt/)
+
         if (!pass) {
             addToFoundTweets(tweet);
         }
