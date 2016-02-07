@@ -38,7 +38,7 @@ function filterNonContests (tweet) {
             return pass && !text.match(phrase);
         }, pass);
 
-        pass = pass && !!text.match(/retweet|rt/)
+        pass = pass && !!text.match(/retweet|rt/);
 
         if (!pass) {
             addToFoundTweets(tweet);
@@ -77,7 +77,7 @@ function enterContest (tweet) {
         .onValue(tweet => {
             var retweet = tweet.retweeted_status,
                 text = retweet.text.toLowerCase(),
-                atTags = retweet.text.match(/@(\w)+/g);
+                atTags = retweet.text.match(/@(\w)+/g) || [];
 
             addToFoundTweets(tweet);
 
