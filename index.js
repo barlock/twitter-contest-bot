@@ -12,7 +12,8 @@ var config = require("./lib/config"),
     previouslyFoundTweets = [],
     friendList = [],
     searchPool = kefir.pool(),
-    contestPool = kefir.pool();
+    contestPool = kefir.pool(),
+    newFriendPool = kefir.pool();
 
 function addToFoundTweets (tweet) {
     previouslyFoundTweets.push(tweet.id_str);
@@ -73,7 +74,8 @@ function enterContest (tweet) {
     return twitter.retweet(tweet.id_str)
         .onValue(tweet => {
             var retweet = tweet.retweeted_status,
-                text = retweet.text.toLowerCase();
+                text = retweet.text.toLowerCase(),
+                atTags = retweet.text.match(/@(\w)+/g);
 
             addToFoundTweets(tweet);
 
@@ -82,36 +84,15 @@ function enterContest (tweet) {
                 twitter.favorite(retweet.id_str);
             }
 
-            if (friendList.indexOf(retweet.user.id_str) === -1 &&
-                text.match(/follow|f\+rt|flw|rt&f/)) {
-
-                console.log(`Following ${retweet.user.id_str}`);
-                twitter.follow(retweet.user.id_str)
-                    .onValue(user => {
-                        friendList.unshift(user.id_str);
-
-                        console.log("New Friend total: ", friendList.length);
-
-                        if (friendList.length > config.maxFriends) {
-                            twitter.unFollow(friendList.pop())
-                                .onValue(user => {
-                                    console.log(`unFollowed ${user.id_str}`);
-                                    console.log("New Friend total: ", friendList.length);
-                                })
-                        }
-                    });
+            if (friendList.indexOf(retweet.user.screen_name) === -1 &&
+                text.match(/follow|f\+rt|flw|rt&f|fllw/)) {
+                newFriendPool.plug(kefir.constant(retweet.user.screen_name));
             }
-        })
-}
 
-function searchStream (type) {
-    return twitter
-        .search({
-            q: "retweet to win -vote -filter:retweets OR RT to win -vote -filter:retweets",
-            result_type: type,
-            count: 100
+            atTags.forEach(screenName => {
+                newFriendPool.plug(kefir.constant(screenName));
+            })
         })
-        .flatten();
 }
 
 twitter.getFriends()
@@ -122,9 +103,6 @@ twitter.getFriends()
         contestPool.plug(twitter
             .tweetStream("retweet win, rt win, retweet enter, rt enter"));
     });
-
-
-//contestPool.plug(kefir.interval(searchStream("popular")));
 
 // Fetch these tweets
 searchPool
@@ -154,4 +132,23 @@ contestPool
         });
 
         enterContest(mostRetweets);
+    });
+
+newFriendPool
+    .flatMap((screenName) => {
+        console.log(`Following ${screenName}`);
+        return twitter.follow(screenName);
+    })
+    .onValue(user => {
+        friendList.unshift(user.screen_name);
+
+        console.log("New Friend total: ", friendList.length);
+
+        if (friendList.length > config.maxFriends) {
+            twitter.unFollow(friendList.pop())
+                .onValue(user => {
+                    console.log(`unFollowed ${user.id_str}`);
+                    console.log("New Friend total: ", friendList.length);
+                })
+        }
     });
