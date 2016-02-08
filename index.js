@@ -149,7 +149,7 @@ newFriendPool
         if (friendList.length > config.maxFriends) {
             twitter.unFollow(friendList.pop())
                 .onValue(user => {
-                    console.log(`unFollowed ${user.id_str}`);
+                    console.log(`unFollowed ${user.screen_name}`);
                     console.log("New Friend total: ", friendList.length);
                 })
         }
