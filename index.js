@@ -129,11 +129,13 @@ contestPool
     .bufferBy(kefir.interval(ONE_DAY / config.tweetsPerDay))
     .onValue(tweets => {
         var mostRetweets = tweets.reduce((mostRetweeted, tweet) => {
-            return tweet.retweet_count > mostRetweeted.retweet_count ?
+            return (mostRetweeted === null || tweet.retweet_count > mostRetweeted.retweet_count) ?
                 tweet : mostRetweeted;
-        });
+        }, null);
 
-        enterContest(mostRetweets);
+        if (mostRetweets !== null) {
+            enterContest(mostRetweets);
+        }
     });
 
 newFriendPool
